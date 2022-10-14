@@ -4,7 +4,18 @@ from mlir.dialects import linalg
 from mlir.dialects import tensor
 from mlir.dialects import arith
 
-from ..utils import get_tensor_type, get_dummy_splat_tensor, get_converted_output
+from ..utils import get_tensor_type, get_dummy_splat_tensor, get_converted_output, is_mlir_int_type, is_mlir_float_type
+from ...ops.common.epilogue import FuncEnum
+
+def insert_elementwise_operation(elementwise_func, arg0, arg1):
+    match elementwise_func:
+        case FuncEnum.ADD:
+            if is_mlir_int_type(arg0.type):
+                return arith.AddIOp(arg0, arg1)
+            elif is_mlir_float_type(arg0.type):
+                return arith.AddFOp(arg0, arg1)
+        case _:
+            return None
 
 def elementwise_conversion_pattern(op, inputs):
     output_tensor = op._attrs["outputs"][0]
@@ -44,6 +55,7 @@ def elementwise_conversion_pattern(op, inputs):
     block = generic_op.regions[0].blocks.append(*block_arg_types)
     with InsertionPoint(block):
         generic_args = block.arguments
-        linalg.YieldOp([generic_args[0]])
+        value = insert_elementwise_operation(op._attrs["func"], generic_args[0], generic_args[1])
+        linalg.YieldOp([value])
 
     return generic_op.result

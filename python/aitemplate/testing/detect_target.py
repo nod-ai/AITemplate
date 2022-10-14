@@ -95,4 +95,7 @@ def detect_target(**kwargs):
 
         logger.info(__name__, "Set target to ROCM")
         return ROCM(arch=flag, **kwargs)
-    raise RuntimeError("Unsupported platform")
+
+    #raise RuntimeError("Unsupported platform")
+    # Allow any platform for MLIR lowering
+    return CUDA(arch="80", **kwargs)

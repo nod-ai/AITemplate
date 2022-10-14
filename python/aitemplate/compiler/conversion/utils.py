@@ -23,13 +23,20 @@ def get_mlir_dtype(dtype: str):
         case _:
             return None
 
-def is_int_type(dtype: str):
+def is_int_type(dtype: str) -> bool:
     return dtype == "int" or dtype == "int32" or dtype == "int64"
 
-def is_float_type(dtype: str):
+def is_float_type(dtype: str) -> bool:
     return dtype == "float" or dtype == "float16" or dtype == "float32"
 
-def get_tensor_type(tensor: Tensor):
+def is_mlir_float_type(t: Type) -> bool:
+  return (F64Type.isinstance(t) or F32Type.isinstance(t) or
+          F16Type.isinstance(t) or BF16Type.isinstance(t))
+
+def is_mlir_int_type(t: Type) -> bool:
+    return IntegerType.isinstance(t)
+
+def get_tensor_type(tensor: Tensor) -> RankedTensorType:
     dtype = get_mlir_dtype(tensor._attrs["dtype"])
 
     shape_attr_list = tensor._attrs["shape"]
@@ -37,7 +44,7 @@ def get_tensor_type(tensor: Tensor):
 
     return RankedTensorType.get(shape, dtype)
 
-def get_function_signature(sorted_graph: List[Tensor]):
+def get_function_signature(sorted_graph: List[Tensor]) -> FunctionType:
     input_types = []
     output_types = []
 
