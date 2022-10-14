@@ -12,20 +12,5 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-from . import base, ops, tensor_accessor, transform, conversion
-from .compiler import compile_model, convert_model_to_linalg
-from .model import AIT_DEFAULT_NUM_RUNTIMES, AITData, Model
-
-__all__ = [
-    "base",
-    "op_registry",
-    "ops",
-    "tensor_accessor",
-    "transform",
-    "conversion",
-    "compile_model",
-    "convert_to_linalg",
-    "Model",
-    "AITData",
-    "AIT_DEFAULT_NUM_RUNTIMES",
-]
+# flake8: noqa
+from .convert_to_linalg import convert_to_linalg

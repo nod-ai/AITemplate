@@ -37,3 +37,5 @@ from .transform_memory_ops import transform_memory_ops
 from .transform_odd_alignment import transform_odd_alignment
 from .transform_special_ops import transform_special_ops
 from .transform_strided_ops import transform_strided_ops
+
+from .print_graph_testing import print_graph_testing

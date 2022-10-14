@@ -166,6 +166,7 @@ def compile_model(
             compiler.transform.mark_special_views(graph)
             compiler.transform.refine_graph(graph)
             graph_utils.dump_graph_debug_str_to_file(graph, test_dir, "refine_graph")
+            compiler.transform.print_graph_testing(graph)
 
             if profile_devs is None:
                 device_env = os.getenv(target.dev_select_flag(), None)
@@ -234,3 +235,50 @@ def compile_model(
     module = Model(os.path.join(workdir, test_name, dll_name), num_runtimes)
     module.debug_sorted_graph = graph
     return module
+
+def convert_model_to_linalg(
+    tensor: Union[Tensor, List[Tensor]],
+    workdir: str,
+    test_name: str,
+    mlir_fname: Optional[str] = None,
+    constants: Optional[Dict[str, TorchTensor]] = None,
+):
+    """Compiles a model and generates an mlir file
+
+    Parameters
+    ----------
+    tensor : Union[Tensor, List[Tensor]]
+        An output Tensor, or a list of output Tensors.
+        The compiled module will preserve the ordering of the outputs in its
+        internal ordering.
+    workdir : str
+        A workdir to store profiling and execution source codes, as well as the result .so file.
+    test_name : str
+        Name of the test. Used as the name of the subdir which stores the generated .so file.
+    target : Target
+        A compilation target. See comments for Target.
+    mlir_fname: str
+        The output .mlir name.
+
+    Returns
+    -------
+    Module: MLIRModule
+        An MLIR Module of the converted model
+    """
+    if constants is None:
+        constants = {}
+
+    test_name = test_name.replace(",", "_")
+    test_dir = os.path.join(workdir, test_name)
+    os.makedirs(test_dir, exist_ok=True)
+
+    graph = None
+    graph = compiler.transform.toposort(tensor)
+    graph_utils.dump_graph_debug_str_to_file(graph, test_dir, "toposort")
+
+    output_tensors = [tensor] if isinstance(tensor, Tensor) else tensor
+    _validate_tensor_args(graph, output_tensors)
+
+    compiler.transform.bind_constants(graph, constants)
+
+    return compiler.conversion.convert_to_linalg(graph)
