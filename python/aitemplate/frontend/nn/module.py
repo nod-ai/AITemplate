@@ -68,7 +68,67 @@ def _addindent(s_, numSpaces):
     return s
 
 
-class Module:
+import inspect
+import torch
+from torch.utils import _pytree as pytree
+
+
+def translate_ait_to_pt_arg_name(mod_name, arg_name):
+    if mod_name == "Linear":
+        arg_name = arg_name.replace("channels", "features")
+    return arg_name
+
+
+class Meta(type):
+    def __new__(mcs, name, bases, namespace, **kwargs):
+        if "__init__" in namespace:
+            if pt_mod := torch.nn.__dict__.get(name):
+                ait_mod_sig = inspect.signature(namespace["__init__"])
+                ait_mod_args_kwargs = {
+                    translate_ait_to_pt_arg_name(name, k): (
+                        "kwarg" if v.default is True else "pos"
+                    )
+                    for k, v in ait_mod_sig.parameters.items()
+                }
+                pt_mod_sig = inspect.signature(pt_mod.__init__)
+                pt_mod_args_kwargs = {
+                    k: ("kwarg" if v.default is True else "pos")
+                    for k, v in pt_mod_sig.parameters.items()
+                }
+                missing = set(pt_mod_args_kwargs.items()) - set(
+                    ait_mod_args_kwargs.items()
+                )
+                extra = set(ait_mod_args_kwargs.items()) - set(
+                    pt_mod_args_kwargs.items()
+                )
+                print(name)
+                print(f"{missing=}")
+                print(f"{extra=}")
+
+        def print_shape(tens):
+            print(f"{[s.value() for s in tens.shape()]}")
+
+        if "__call__" in namespace and name != "Module":
+            print(f"__call__ in {name}")
+
+        if "forward" in namespace and name != "Module":
+            old_forward = namespace["forward"]
+
+            def new_forward(self, *args, **kwargs):
+                print(f"input shapes in {name}")
+                pytree.tree_map_only(Tensor, print_shape, (args, kwargs))
+                res = old_forward(self, *args, **kwargs)
+                print(f"output shapes in {name}")
+                pytree.tree_map_only(Tensor, print_shape, res)
+                return res
+
+            namespace["forward"] = new_forward
+
+        new_cls = super(Meta, mcs).__new__(mcs, name, bases, namespace, **kwargs)
+        return new_cls
+
+
+class Module(metaclass=Meta):
     r"""Base class for all neural network modules.
 
     Your models should also subclass this class.
